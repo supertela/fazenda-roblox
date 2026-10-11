@@ -1,26 +1,27 @@
 # Roadmap
 
-Este roadmap registra evidências encontradas no place. Presença de código ou objetos não significa que o fluxo tenha sido testado ou concluído.
+Este roadmap registra evidências encontradas no place. Presença de código ou objetos não significa que uma funcionalidade foi testada ou concluída.
 
-## Concluído nesta preparação
+## Infraestrutura do projeto
 
-- [x] Salvar uma cópia local do DataModel aberto como `Place1.rbxl`.
-- [x] Inicializar o repositório Git local na branch `main`.
-- [x] Registrar a estrutura observada e os limites da inspeção.
-- [x] Confirmar que não há configuração Rojo na pasta local.
+- [x] Salvar a cópia local do place como `Place1.rbxl`.
+- [x] Inicializar Git na branch `main` e registrar o commit inicial.
+- [x] Criar documentação de continuidade, planejamento, histórico e problemas conhecidos.
+- [x] Criar o repositório GitHub privado `supertela/fazenda-roblox` e configurar `origin`.
+- [x] Exportar os 1.599 scripts visíveis no DataModel para `script-sources/` e gerar o manifesto.
+- [ ] Definir um processo repetível para atualizar a exportação depois de mudanças no Studio.
+- [ ] Avaliar uma migração Rojo separada; não alterar o place automaticamente.
 
 ## Presente no projeto; funcionamento ainda não validado
 
-- [ ] Mapa de fazenda e canteiros no Workspace.
+- [ ] Mapa de fazenda e canteiros em `Workspace`.
 - [ ] Código para ciclo de cultivo e economia em `GardenMechanics`.
 - [ ] Scripts e módulos para sementes, plantas, inventário, pets, clima, eventos, quests e pesca.
 - [ ] Interface e scripts de cliente em `StarterGui` e `StarterPlayer`.
 
-## Pendências
+## Validação pendente
 
-- [ ] Abrir e testar a cópia local no Roblox Studio.
-- [ ] Revisar logs e corrigir erros reproduzidos.
-- [ ] Auditar o fluxo de salvamento de dados e confirmar o propósito de `DataService` e `ProfileService`.
-- [ ] Configurar o autor Git local e criar o primeiro commit.
-- [ ] Decidir se Rojo será configurado; avaliar o mapeamento antes de migrar.
-- [ ] Criar o repositório GitHub privado e configurar `origin` após autorização explícita e autenticação.
+- [ ] Abrir a cópia local no Roblox Studio e executar um playtest.
+- [ ] Revisar logs e reproduzir problemas antes de registrar defeitos.
+- [ ] Auditar o fluxo de salvamento de dados e o propósito de `DataService` e `ProfileService`.
+- [ ] Atualizar o changelog e a documentação a cada alteração confirmada.

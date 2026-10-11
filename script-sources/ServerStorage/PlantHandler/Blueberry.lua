@@ -1,0 +1,375 @@
+local Blueberry = {}
+Blueberry.__index = Blueberry
+
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local ServerStorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Modules = ReplicatedStorage:WaitForChild("Modules")
+local Plants = require(ServerStorage.Plants)
+
+local VariantVisuals = require(Modules:WaitForChild("VariantVisuals"))
+local Maid = require(Modules:WaitForChild("Maid"))
+
+local CalWeight = require(ReplicatedStorage.Calculate_Weight)
+local Item_Module = require(ReplicatedStorage.Item_Module)
+local TurnToTool = require(ServerStorage.TurnToTool)
+
+function RandomNumber(Seed, Min, Max)
+	local Rand = Random.new(Seed)
+	if not Min or not Max then
+		return Rand:NextNumber()
+	else
+		return Rand:NextNumber(Min, Max)
+	end
+end
+
+function generateBush(seed: number, origin: Vector3, bushCount: number, clusterRadius: number, minSpacing: number, parent: Instance)
+	local bushModel = ServerStorage.PlantStages.Blueberry.Bush
+	local placedBushes = {}
+
+	math.randomseed(seed)
+	local firstBush = bushModel:Clone()
+	firstBush.Name = "1"
+	firstBush.Size = firstBush.Size + Vector3.new(math.random() * 2, math.random(), math.random() * 2)
+	firstBush.Transparency = 0
+	firstBush.Parent = parent
+	table.insert(placedBushes, firstBush)
+
+	local groundY = origin.Y - firstBush.Size.Y / 2
+	firstBush.Position = Vector3.new(origin.X, groundY + firstBush.Size.Y / 2, origin.Z)
+
+	for i = 2, bushCount do
+		local attempts = 0
+		local maxAttempts = 100
+		local newBush
+
+		while attempts < maxAttempts do
+			local angle = RandomNumber(seed) * 2 * math.pi
+			local distance = RandomNumber(seed) * clusterRadius
+			local offset = Vector3.new(math.cos(angle) * distance, 0, math.sin(angle) * distance)
+			local newPosition = origin + offset
+
+			local validPosition = true
+			for _, bush in ipairs(placedBushes) do
+				local distanceToBush = (bush.Position - newPosition).Magnitude
+				if distanceToBush < minSpacing then
+					validPosition = false
+					break
+				end
+			end
+
+			if validPosition then
+				newBush = bushModel:Clone()
+				newBush.Name = "1"
+				newBush.Size = newBush.Size + Vector3.new(RandomNumber(seed) * 2, RandomNumber(seed), RandomNumber(seed) * 2)
+				newBush.Position = Vector3.new(newPosition.X, groundY + newBush.Size.Y / 2, newPosition.Z)
+				newBush.Transparency = 0
+				newBush.Parent = parent
+				table.insert(placedBushes, newBush)
+				break
+			end
+
+			attempts += 1
+		end
+	end
+
+	return placedBushes
+end
+
+function Blueberry.new(uuid, origin, owner, model, lastUpd, lastFruit)
+	if not Plants[owner] then
+		return
+	end
+	
+	local self = setmetatable({}, Blueberry)
+	self.owner = owner
+	self.model = model
+	self.grow = self.model.Grow; self.growOrigin = origin
+	self.seed = self.model.Item_Seed.Value
+	
+	generateBush(self.seed, model:GetPivot().Position, math.random(3, 6), 2, 1, model)
+	model:PivotTo(model:GetPivot())
+	
+	self.weight = CalWeight.Calculate_Weight(self.seed, script.Name)
+	self.maxage = 5
+	self.plantdown = 0.25
+	
+	local data = Item_Module.Return_Data(script.Name);
+	self.data = data;
+
+	local scale_divisor = data[2];
+	local value_per = data[3];
+	local chance_to_grow_huge = 1/data[4];
+
+	self.scale = self.weight / scale_divisor;
+	self.model:ScaleTo(self.scale)
+
+	self.gtt = NumberRange.new(0.8, 1.2)
+	self.grm = 1
+	
+	self.fruitProduce = NumberRange.new(5, 8)
+	self.maxProduction = 8
+	self.fruit = ReplicatedStorage.Fruit_Spawn.Blueberry
+	
+	self.maid = Maid.new()
+	self.lastUpd = lastUpd or os.time()
+	self.lastWaitTime = 0
+	self.lastTick = 0
+	self.lastWaitTimeFruit = 0
+	self.lastTickFruit = 0
+	self.progress = 0
+	self.uuid = uuid or HttpService:GenerateGUID(true)
+	self.model:SetAttribute("uuid", self.uuid)
+	
+	self.isGrowing = false
+	self.growFruit = false
+	
+	Plants[self.owner].Plants[self.uuid] = self
+	self.model:SetAttribute("MaxAge", self.maxage)
+	
+	for _, part: BasePart in model:GetChildren() do
+		if part:IsA("BasePart") then
+			part:SetAttribute("id", HttpService:GenerateGUID(true))
+		end
+	end
+
+	self.model.Weight.Value = self.weight
+	if self.model.Variant.Value ~= "Normal" then
+		VariantVisuals:SetVisuals(self.model, {DoEpicRainbow = false})	
+	end
+	
+	self.maid:GiveTask(self.model.Variant.Changed:Connect(function(value: string) 
+		VariantVisuals:SetVisuals(self.model, {DoEpicRainbow = false})	
+	end))
+	
+	self.maid:GiveTask(self.model.Destroying:Connect(function()
+		self:CleanUp()
+	end))
+	
+	--// Offline grow
+	local now = os.time()
+	local elapsed = now - self.lastUpd
+
+	local avgTickTime = (self.gtt.Min + self.gtt.Max) / 2 * self.grm
+	local ticksElapsed = math.floor((elapsed / avgTickTime) * 0.4)
+
+	local growthPerTick = self.grow.Grow_Rate.Value * self.grow.Item_Speed_Mult.Value
+	local offlineGrowth = ticksElapsed * growthPerTick
+
+	self.grow.Age.Value = math.clamp(self.grow.Age.Value + offlineGrowth, 0, growthPerTick * math.ceil(self.maxage / growthPerTick))
+	self.age = self.grow.Age.Value
+	
+	--// Offline fruits
+	self.toProduce = 0
+	self.lastFruit = lastFruit or os.time()
+
+	local AverageCycleTime = (self.fruitProduce.Min + self.fruitProduce.Max) / 2
+
+	local elapsed = now - self.lastFruit
+	local fruitsToProduce = math.floor(elapsed / AverageCycleTime)
+
+	self.toProduce = math.min(fruitsToProduce, self.maxProduction)
+	
+	local _model = self.model:Clone()
+	
+	for _, part: BasePart in model:GetChildren() do
+		if part:IsA("BasePart") and tonumber(part.Name) then
+			local otherPart
+			for _, prt in _model:GetChildren() do
+				if prt:IsA("BasePart") and prt:GetAttribute("id") == part:GetAttribute("id") then
+					otherPart = prt
+					break
+				end
+			end
+
+			--TODO: ACTUALLY MAKE THE CALCULATION BETTER
+			otherPart.Position = Vector3.new(otherPart.Position.X, otherPart.Position.Y + (otherPart.Size.Y / 2) - (self.plantdown * 2), otherPart.Position.Z)
+			part:SetAttribute("CanCollide", part.CanCollide)
+			part:SetAttribute("CFrame", otherPart.CFrame);
+			part:SetAttribute("Size", part.Size);
+
+			part.CanCollide = false
+			part.Transparency = 1;
+			part.Position = Vector3.new(part.Position.X, part.Position.Y - (part.Size.Y / 2), part.Position.Z)
+			part.Size = Vector3.zero;
+
+			if self.age > self.maxage then
+				part:SetAttribute("DoneGrowing", true);
+			else
+				part:SetAttribute("DoneGrowing", nil);
+			end
+		end
+	end
+
+	_model:Destroy()
+	model:AddTag("PlantGenerated")
+	self:GrowStart()
+	return self
+end
+
+function Blueberry:ShowGrowProcess()
+	local age = math.min(math.ceil(self.age), self.maxage)
+
+	for _, part in self.model:GetChildren() do
+		if tonumber(part.Name) and part:IsA("BasePart") then
+			if part.Name == tostring(age) then
+				part.CanCollide = part:GetAttribute("CanCollide")
+				part.Transparency = part:GetAttribute("OG_Transparency")
+				part.Size = part.Size:Lerp(part:GetAttribute("Size"), math.min(self.progress, 1))
+				part.CFrame = part.CFrame:Lerp(part:GetAttribute("CFrame"), math.min(self.progress, 1))
+
+				if self.progress >= 1 then
+					part:SetAttribute("DoneGrowing", true)
+				end
+			elseif tonumber(part.Name) <= age and part.Size ~= part:GetAttribute("Size") then
+				self.progress = 0.2
+				part.Size = part.Size:Lerp(part:GetAttribute("Size"), 1)
+				part.CFrame = part.CFrame:Lerp(part:GetAttribute("CFrame"), 1)
+
+				part.CanCollide = part:GetAttribute("CanCollide")
+				part.Transparency = part:GetAttribute("OG_Transparency")
+				part:SetAttribute("DoneGrowing", true)
+			end
+		end
+	end
+end
+
+function Blueberry:Produce(num, isOffline)
+	self.lastFruit = os.time() 
+	for i = 1, num do
+		for i, v in self.model:GetChildren() do
+			if v.Name == "1" then
+				local x, y, z = 
+					v.Position.X + RandomNumber(nil, -v.Size.X/2, v.Size.X/2),
+					v.Position.Y + RandomNumber(nil, -v.Size.Y/2, v.Size.Y/2),
+					v.Position.Z + RandomNumber(nil, -v.Size.Z/2, v.Size.Z/2)
+
+				if #self.model.Fruits:GetChildren() < self.maxProduction then
+					local newFruit = self.fruit:Clone()
+					newFruit:SetAttribute("Owner", self.owner.Name)
+					newFruit:SetPrimaryPartCFrame(
+						CFrame.new(x, y, z) * 
+						CFrame.Angles(0, 0, math.rad(180)) * 
+						CFrame.Angles(
+							math.rad(math.random(-25, 25)), 
+							math.rad(math.random(-25, 25)), 
+							math.rad(math.random(-25, 25))
+							)
+					)
+					require(script.FruitHandler).new(nil, self.owner, newFruit, isOffline and 0 or nil, self.model.Item_Seed.Value, self.weight, self.uuid)
+					newFruit.Parent = self.model.Fruits
+				else
+					break
+				end
+			end
+		end
+	end
+end
+
+function Blueberry:StartFruitGrowing()
+	if self.growFruit then
+		return
+	end
+	self.growFruit = true
+	
+	if self.toProduce >= 1 then
+		self:Produce(self.toProduce, true)
+	end
+	
+	self.maid:GiveTask(RunService.Heartbeat:Connect(function(dt: value)
+		if not (tick() - self.lastTickFruit >= self.lastWaitTimeFruit) then
+			return
+		end
+		
+		self:Produce(1)
+
+		self.lastTickFruit = tick()
+		self.lastWaitTimeFruit = RandomNumber(self.seed, self.fruitProduce.Min, self.fruitProduce.Max)
+	end))
+end
+
+function Blueberry:GrowStart()
+	if self.isGrowing then
+		return
+	end
+	self.isGrowing = true
+	
+	local taskId; taskId = self.maid:GiveTask(RunService.Heartbeat:Connect(function(dt: value)
+		if not (tick() - self.lastTick >= self.lastWaitTime) then
+			return
+		end
+		
+		self.lastTick = tick()
+		self.lastWaitTime = RandomNumber(self.seed, self.gtt.Min, self.gtt.Max) * self.grm
+
+		local newValue = math.max(self.grow.Age.Value + self.grow.Grow_Rate.Value * self.grow.Item_Speed_Mult.Value, 0)
+		self.age = newValue
+		self.grow.Age.Value = newValue
+		
+		if self.progress < 1 then
+			self.progress += (self.grow.Grow_Rate.Value * self.grow.Item_Speed_Mult.Value) / 2
+		else
+			self.progress = 0.2
+		end
+		self:ShowGrowProcess()
+		self.lastUpd = os.time()
+		
+		local partCount = 0
+		local doneGrowing = 0
+		for _, part in self.model:GetChildren() do
+			if part:IsA("BasePart") and part:GetAttribute("CFrame") then
+				partCount = partCount + 1
+				if part:GetAttribute("DoneGrowing") then
+					doneGrowing = doneGrowing + 1
+				end
+			end
+		end
+		
+		if doneGrowing >= 1 and not self.growFruit then
+			self:StartFruitGrowing()
+		end
+		
+		if self.age >= self.maxage and partCount == doneGrowing then
+			self.isGrowing = false
+			self:GrowFinish()
+			
+			local task = self.maid._tasks[taskId]
+			task:Disconnect()
+			self.maid._tasks[taskId] = nil
+			return
+		end
+	end))
+end
+
+function Blueberry:GrowFinish()
+	--[[
+	local prompt = self.model:FindFirstChildWhichIsA("ProximityPrompt", true)
+	if prompt then
+		prompt.Enabled = true
+		self.maid:GiveTask(prompt.Triggered:Connect(function(playerWhoTriggered: Player)
+			if playerWhoTriggered ~= self.owner then
+				return
+			end
+			
+			local VariantVal = self.model:FindFirstChild("Variant")
+			local Variant = VariantVal and VariantVal.Value or "Normal"
+			
+			local tool = TurnToTool(self.model, Variant, self.weight, nil, uuid)
+			if tool then
+				prompt.Enabled = false
+				tool.Parent = playerWhoTriggered.Backpack
+				self.model:Destroy()
+			end
+		end))
+	end
+	]]
+end
+
+function Blueberry:CleanUp()
+	self.maid:DoCleaning()
+	Plants[self.owner].Plants[self.uuid] = nil
+end
+
+return Blueberry

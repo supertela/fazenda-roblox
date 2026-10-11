@@ -1,66 +1,34 @@
-# Fazenda — Place1
+# Place1 — projeto Roblox
 
-Repositório local para preservar e desenvolver o projeto Roblox aberto no Studio como **Place1**. O nome do repositório solicitado é `fazenda-roblox`; o título observado no Roblox Studio continua sendo `Place1`.
+Repositório privado para preservar e desenvolver o jogo Roblox **Place1**. O nome do repositório GitHub é `fazenda-roblox`.
 
-## Estado atual
+## Conteúdo
 
-- `Place1.rbxl` é uma cópia local salva do place aberto no Roblox Studio em 11/10/2026.
-- O arquivo é um place binário do Roblox Studio. Os scripts e modelos estão dentro dele; ainda não foram exportados para arquivos Luau individuais.
-- Não foi encontrada configuração ou sincronização Rojo na pasta do projeto.
-- O repositório Git local foi inicializado na branch `main`. O primeiro commit aguarda a configuração do autor.
-- Não há repositório remoto configurado. Nada foi enviado ao GitHub.
+- `Place1.rbxl`: cópia completa do place para abrir no Roblox Studio.
+- `script-sources/`: fotografia em arquivos Lua dos scripts encontrados no DataModel. `manifest.json` relaciona cada arquivo ao caminho e à classe original no Studio.
+- `PROJECT_CONTEXT.md`: arquitetura observada, estado da exportação e informações para continuidade por outra IA.
+- `ROADMAP.md`, `CHANGELOG.md` e `BUGS.md`: planejamento, histórico e pontos de investigação.
+- `.gitignore`: arquivos temporários e locais que não devem ser versionados.
 
-## Abrir e executar
+A exportação atual contém 1.599 scripts: 769 `Script`, 152 `LocalScript` e 678 `ModuleScript`. Instâncias com o mesmo nome e caminho recebem sufixos `__dupNN`; consulte o manifesto para identificar cada uma.
+
+## Abrir e desenvolver
 
 1. Abra `Place1.rbxl` no Roblox Studio.
-2. Use **Play** no Studio para iniciar uma sessão de teste.
-3. Salve alterações no Studio e revise `git status` antes de registrar uma versão.
+2. Faça e teste alterações no Studio.
+3. Salve o place em `Place1.rbxl`.
+4. Se scripts mudaram no Studio, peça ao Codex para atualizar a fotografia em `script-sources/` antes de registrar a versão. Confira o diff entre os scripts e o place.
+5. No GitHub Desktop, revise **Changes**, escreva um resumo e selecione **Commit to main**.
+6. Use **Push origin** para enviar o commit ao repositório privado.
 
-O comportamento do jogo e os serviços externos não foram validados nesta preparação. Consulte [BUGS.md](BUGS.md) e [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md) antes de assumir que uma funcionalidade está pronta.
+**Importante:** `script-sources/` é uma exportação de leitura, não uma pasta conectada ao Studio. Editar um arquivo Lua exportado não altera o place. Para aplicar mudanças, faça-as no Studio e atualize a exportação. Rojo não está configurado; qualquer migração para sincronização automática exige planejamento separado.
 
-## Estrutura do repositório
+O funcionamento do jogo e os serviços externos não foram validados por playtest nesta preparação.
 
-```text
-fazenda-roblox/
-├── Place1.rbxl
-├── README.md
-├── PROJECT_CONTEXT.md
-├── ROADMAP.md
-├── CHANGELOG.md
-├── BUGS.md
-└── .gitignore
-```
+## Versões anteriores
 
-## Primeiro commit
-
-Configure o nome e o e-mail que devem aparecer no histórico. Use o endereço de e-mail configurado na sua conta GitHub ou o endereço privado `noreply` fornecido pelo próprio GitHub; nunca coloque tokens ou senhas no repositório.
-
-```powershell
-git config user.name "Seu nome"
-git config user.email "seu-email-ou-noreply"
-git add .
-git status
-git commit -m "Initial Place1 project snapshot"
-```
-
-## Versionar alterações
-
-Depois de salvar no Roblox Studio:
-
-```powershell
-git status
-git add Place1.rbxl
-git add README.md PROJECT_CONTEXT.md ROADMAP.md CHANGELOG.md BUGS.md .gitignore
-git diff --cached --stat
-git commit -m "Descreva a alteração"
-```
-
-Para consultar versões anteriores, use `git log --oneline`. Para restaurar somente o arquivo do jogo a partir de um commit específico, primeiro preserve qualquer trabalho atual e então use `git restore --source=<commit> -- Place1.rbxl`.
+A aba **History** do GitHub Desktop permite examinar commits. Para desfazer um commit sem apagar o histórico, clique nele com o botão direito e escolha **Revert this commit**. Para recuperar uma cópia antiga do place ou de scripts específicos, identifique o commit na History e peça ao Codex para restaurar os arquivos necessários.
 
 ## GitHub
 
-O remoto não foi criado nem configurado. Para publicar, primeiro autorize a criação do repositório privado `fazenda-roblox` e conclua a autenticação pelo fluxo seguro do GitHub CLI (`gh auth login`) ou pelo Git Credential Manager. Depois de criar o remoto privado, configure `origin` e faça o primeiro `git push -u origin main`. Não digite tokens em comandos, arquivos do projeto ou mensagens.
-
-## Rojo
-
-Rojo não foi detectado nesta cópia. A migração exige mapear serviços, scripts, modelos e assets do place para uma estrutura de arquivos; isso pode alterar como o Studio carrega e sincroniza o projeto. A cópia binária preserva o estado atual enquanto essa decisão fica pendente.
+O remoto privado `origin` aponta para [supertela/fazenda-roblox](https://github.com/supertela/fazenda-roblox). A branch local `main` acompanha `origin/main`.
