@@ -1,0 +1,30 @@
+# Roblox Studio locks, backups and temporary files
+*.rbxl.lock
+*.rbxlx.lock
+*.rbxm.lock
+*.rbxmx.lock
+*.bak
+*.tmp
+*.autosave
+
+# Rojo generated output (keep project configuration and source files)
+sourcemap.json
+*.sourcemap.json
+
+# Local credentials and secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Operating system and editor noise
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
